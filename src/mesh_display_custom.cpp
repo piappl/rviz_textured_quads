@@ -245,6 +245,7 @@ void MeshDisplayCustom::clearStates()
   {
     border_colors_[i] = 1.0;
   }
+  // border_colors_[3] = 0.0; // Alpha
 }
 
 void MeshDisplayCustom::constructQuads(const sensor_msgs::Image::ConstPtr& image)
@@ -390,24 +391,40 @@ void MeshDisplayCustom::updateMeshProperties()
     // update color/alpha
     Ogre::Technique* technique = mesh_materials_->getTechnique(0);
     Ogre::Pass* pass = technique->getPass(0);
-
-    Ogre::ColourValue self_illumination_color(0.0f, 0.0f, 0.0f, 0.0f);
+    // Emissive / self illumination is the color 'produced' by the object.
+    // Color values vary between 0.0(minimum) to 1.0 (maximum). 
+    Ogre::ColourValue self_illumination_color(0.0f, 0.0f, 0.0f, 1.0f);
     pass->setSelfIllumination(self_illumination_color);
-
-    Ogre::ColourValue diffuse_color(0.0f, 0.0f, 0.0f, 1.0f);
+    // diffuse color is the traditionnal color of the lit object. 
+    // set alpha to zero, not to have any color
+    Ogre::ColourValue diffuse_color(0.0f, 0.0f, 0.0f, 0.0f);
     pass->setDiffuse(diffuse_color);
-
-    Ogre::ColourValue ambient_color(border_colors_[0],
-        border_colors_[1], border_colors_[2], border_colors_[3]);
+    // ambient colour is linked to ambient lighting.
+    // If there is no ambient lighting, then this has no influence.
+    // It the ambient lighting is at 1, then this colour is fully added.
+    // This is often use to change the general feeling of a whole scene. 
+    Ogre::ColourValue ambient_color(0.0f, 0.0f, 0.0f, 0.0f);
     pass->setAmbient(ambient_color);
-
-    Ogre::ColourValue specular_color(0.0f, 0.0f, 0.0f, 1.0f);
+    // specular colour, is the colour of the 'little light reflection'
+    // that you can see on some object. For example, my bald head skin
+    // reflect the sun. This make a 'round of specular lighting'.
+    // Set this to black if you don't want to see it. 
+    Ogre::ColourValue specular_color(1.0f, 1.0f, 1.0f, 1.0f);
     pass->setSpecular(specular_color);
-
-    Ogre::Real shininess = 64.0f;
+    // Shininess is the 'inverse of specular color splattering' coefficient.
+    // If this is big (e.g : 64) you get a very tiny dot with a quite strong color (on round surface).
+    // If this is 0, you get a simple color layer (the dot has become very wide). 
+    Ogre::Real shininess = 0.0f;// 64.0f;
     pass->setShininess(shininess);
 
-    pass->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
+    // SBT_TRANSPARENT_ALPHA 	Make the object transparent based on the final
+    //                        alpha values in the texture.
+    // SBT_TRANSPARENT_COLOUR 	Make the object transparent based on the colour
+    //                          values in the texture (brighter = more opaque)
+    // SBT_ADD 	Add the texture values to the existing scene content.
+    // SBT_MODULATE 	Multiply the 2 colours together.
+    // SBT_REPLACE 	The default blend mode where source replaces destination. 
+    pass->setSceneBlending(Ogre::SBT_TRANSPARENT_COLOUR);
     pass->setDepthWriteEnabled(false);
 
     context_->queueRender();
@@ -465,30 +482,43 @@ void MeshDisplayCustom::load()
   if (!rg_mgr.resourceGroupExists(resource_group_name))
   {
     rg_mgr.createResourceGroup(resource_group_name);
-
     mesh_materials_ = material_manager.create(material_name, resource_group_name);
-    Ogre::Technique* technique = mesh_materials_->getTechnique(0);
-    Ogre::Pass* pass = technique->getPass(0);
-
-    Ogre::ColourValue self_illumnation_color(0.0f, 0.0f, 0.0f, border_colors_[3]);
-    pass->setSelfIllumination(self_illumnation_color);
-
-    Ogre::ColourValue diffuse_color(border_colors_[0],
-        border_colors_[1], border_colors_[2], border_colors_[3]);
-    pass->setDiffuse(diffuse_color);
-
-    Ogre::ColourValue ambient_color(border_colors_[0],
-        border_colors_[1], border_colors_[2], border_colors_[3]);
-    pass->setAmbient(ambient_color);
-
-    Ogre::ColourValue specular_color(1.0f, 1.0f, 1.0f, 1.0f);
-    pass->setSpecular(specular_color);
-
-    Ogre::Real shininess = 64.0f;
-    pass->setShininess(shininess);
-
-    pass->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
+    // A typical way for the rendering engine to cull triangles is based on the 
+    // 'vertex winding' of triangles. Vertex winding refers to the direction in
+    // which the vertices are passed or indexed to in the rendering operation as
+    // viewed from the camera, and will wither be clockwise or anticlockwise 
+    // (that's 'counterclockwise' for you Americans out there ;) The default is
+    // CULL_CLOCKWISE i.e. that only triangles whose vertices are passed/indexed
+    // in anticlockwise order are rendered - this is a common approach and is
+    // used in 3D studio models for example. You can alter this culling mode if
+    // you wish but it is not advised unless you know what you are doing. 
+    // You may wish to use the CULL_NONE option for mesh data that you cull
+    // yourself where the vertex winding is uncertain. 
     mesh_materials_->setCullingMode(Ogre::CULL_NONE);
+    updateMeshProperties();
+    
+    // Ogre::Technique* technique = mesh_materials_->getTechnique(0);
+    // Ogre::Pass* pass = technique->getPass(0);
+
+    // Ogre::ColourValue self_illumnation_color(0.0f, 0.0f, 0.0f, border_colors_[3]);
+    // pass->setSelfIllumination(self_illumnation_color);
+
+    // Ogre::ColourValue diffuse_color(border_colors_[0],
+    //     border_colors_[1], border_colors_[2], border_colors_[3]);
+    // pass->setDiffuse(diffuse_color);
+
+    // Ogre::ColourValue ambient_color(border_colors_[0],
+    //     border_colors_[1], border_colors_[2], border_colors_[3]);
+    // pass->setAmbient(ambient_color);
+
+    // Ogre::ColourValue specular_color(1.0f, 1.0f, 1.0f, 1.0f);
+    // pass->setSpecular(specular_color);
+
+    // Ogre::Real shininess = 0.0f; // 64.0f;
+    // pass->setShininess(shininess);
+
+    // pass->setSceneBlending(Ogre::SBT_TRANSPARENT_ALPHA);
+    
   }
 
   mesh_nodes_ = this->scene_node_->createChildSceneNode();
