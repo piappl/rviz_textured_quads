@@ -743,7 +743,12 @@ void MeshDisplayCustom::processImage(int index, const sensor_msgs::Image& msg)
   // add completely white transparent border to the image so that it won't replicate colored pixels all over the mesh
   cv::Scalar value(255, 255, 255, 0);
   cv::copyMakeBorder(cv_ptr->image, cv_ptr->image, 1, 1, 1, 1, cv::BORDER_CONSTANT, value);
-  cv::flip(cv_ptr->image, cv_ptr->image, -1);
+  // This function flips an image around the x-axis, the y-axis, or both. By
+  // default, flip Code is set to 0, which flips around the x-axis. If flipCode
+  // is set greater than zero (e.g., +1), the image will be flipped around the
+  // yaxis, and if set to a negative value (e.g., -1), the image will be flipped
+  // about both axes. 
+  cv::flip(cv_ptr->image, cv_ptr->image, 1);
 
   // Output modified video stream
   if (textures_ == NULL)
